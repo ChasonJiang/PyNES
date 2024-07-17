@@ -1,0 +1,6 @@
+assets
+.VSCodeCounter
+.vscode
+bugger
+rom
+./**/__pycache__
