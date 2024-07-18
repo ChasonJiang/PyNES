@@ -1,5 +1,6 @@
 import logging
-logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename='nes.log', filemode='w')
+logging.basicConfig(level=logging.ERROR, format='%(levelname)s - %(message)s', filename='nes.log', filemode='w')
 
 # from cpu import CPU
 from typing import Tuple
@@ -97,7 +98,7 @@ def test_cpu(breakpoint_addr=None):
     m.hook_enable(True)
     m.reset(0x0C000)
     status_result = {}
-    # m.register_cpu_hook(CPUHookType.STATUS, status_hook, (status_result,))
+    m.register_cpu_hook(CPUHookType.STATUS, status_hook, (status_result,))
 
 
     test_data = load_test_data("bugger/test_rom/nestest.log")
@@ -120,7 +121,7 @@ def test_all(breakpoint_addr=None):
     logger.setLevel(logging.NOTSET)
     breakpoint_addr = breakpoint_addr
 
-    c=Cartridge("bugger/test_rom/nestest2.nes")
+    c=Cartridge("roms/Super Mario Bros (E).nes")
     m=Machine(c)
     m.hook_enable(True)
     m.reset()
@@ -144,7 +145,7 @@ def show_bg():
     from PIL import Image
     import numpy as np
 
-    c=Cartridge("roms/Super Mario Bros (E).nes")
+    c=Cartridge("bugger/test_rom/nestest2.nes")
 
     pattern_base_addr = 0x1000
 

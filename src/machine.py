@@ -36,7 +36,8 @@ class Machine:
         self.displayer:Displayer = Displayer()
 
         self.ppu_memory = Memory(PPU_MEMORY_SIZE)
-        self.ppu_bus = PPUBus(self.ppu_memory)
+        self.ppu_palette_index_memory = Memory(32)
+        self.ppu_bus = PPUBus(self.ppu_memory, self.ppu_palette_index_memory)
         self.ppu = PPU(self.ppu_bus)
         # self.ppu.register_renderer(self.displayer.render)
 
@@ -87,17 +88,23 @@ class Machine:
         cycle_time = round(1000_000_000/NTSC_CPU_CLOCK_FREQ if self.is_ntsc else 1000_000_000/PAL_CPU_CLOCK_FREQ)
         self.machine_status["is_running"] = True
         try:
+            delay_time = 0
             while self.machine_status["is_running"]:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.machine_status["is_running"] = False
+                # running_time = time.perf_counter_ns() - start_time
+                # if cycle_time > running_time + delay_time:
+                #     LOGGER.debug("Machine: Waiting for next cycle")
+                #     # print(f"{cycle_time-(time.perf_counter_ns() - start_time):<8d}",end="\r")
+                #     continue
+                # else:
+                #     if running_time > cycle_time:
+                #         delay_time = running_time - cycle_time
+                #     else:
+                #         delay_time = 0
+                    # print(f"{cycle_time-(time.perf_counter_ns() - start_time):<8d}",end="\r")
 
-                if cycle_time - (time.perf_counter_ns() - start_time) > 0:
-                    LOGGER.debug("Machine: Waiting for next cycle")
-                    print(f"{cycle_time-(time.perf_counter_ns() - start_time):<8d}",end="\r")
-                    continue
-                else:
-                    print(f"{cycle_time-(time.perf_counter_ns() - start_time):<8d}",end="\r")
 
 
                 start_time = time.perf_counter_ns()

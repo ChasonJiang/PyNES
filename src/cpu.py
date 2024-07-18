@@ -86,21 +86,21 @@ class CPU(ICPU):
         return (hi << 8) | lo
 
     def irq(self):
-        if self.regs.P & Flags.I != 0:
+        if self.regs.P.I != 0:
             return
         
         self.push_word(self.regs.PC)
-        self.push_byte((self.regs.P | Flags.U) & ~Flags.B)
+        self.push_byte((self.regs.P.read() | Flags.U) & ~Flags.B)
 
-        self.regs.P |= Flags.I
+        self.regs.P.I = 1
         self.regs.PC = self.bus.read_word(self.IRQ_ADDR)
         self.defer_cycles += 7
 
     def nmi(self):
         self.push_word(self.regs.PC)
-        self.push_byte((self.regs.P | Flags.U) & ~Flags.B)
+        self.push_byte((self.regs.P.read() | Flags.U) & ~Flags.B)
 
-        self.regs.P |= Flags.I
+        self.regs.P.I = 1
         self.regs.PC = self.bus.read_word(self.NMI_ADDR)
         self.defer_cycles += 7
 
@@ -109,7 +109,8 @@ class CPU(ICPU):
         self.regs.X = 0
         self.regs.Y = 0
         self.regs.SP = 0xFD
-        self.regs.P = Flags.I | Flags.U
+        self.regs.P.I = 1
+        self.regs.P.U = 1
         self.regs.PC = self.bus.read_word(self.REST_ADDR) if start_addr is None else start_addr
         self.defer_cycles = 7
         self.cycles = 0        
@@ -143,13 +144,13 @@ class CPU(ICPU):
             self.irq_enabled = False
 
         opcode:bytes = self.fetch()
-        self.current_instruction = self.decode(opcode)
+        self.current_instruction = self.decoder.decode(opcode)
 
         if self.hook_enabled:
             self._call_before_exec_hook()
             self._call_status_hook()
         self.log()
-        self.execute(self.current_instruction)
+        self.executor.execute(self.current_instruction)
 
         if self.hook_enabled:
             self._call_after_exec_hook()
@@ -165,11 +166,11 @@ class CPU(ICPU):
             # self.regs.PC &= 0xFFFF
         return opcode
 
-    def decode(self, opcode:bytes) -> Instruction:
-        return self.decoder.decode(opcode)
+    # def decode(self, opcode:bytes) -> Instruction:
+    #     return self.decoder.decode(opcode)
     
-    def execute(self, ins:Instruction):
-        self.executor.execute(ins)
+    # def execute(self, ins:Instruction):
+    #     self.executor.execute(ins)
 
     def get_status(self) -> dict:
         return {
@@ -178,7 +179,7 @@ class CPU(ICPU):
             "A": self.regs.A,
             "X": self.regs.X,
             "Y": self.regs.Y,
-            "P": self.regs.P,
+            "P": self.regs.P.read(),
             "SP": self.regs.SP,
             "CYC": self.cycles
         }

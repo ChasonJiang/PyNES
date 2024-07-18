@@ -132,32 +132,31 @@ def sub_8bit(*nums:List[bytes])->Tuple[bytes, bool, bool, bool]:
 @method_register("ADC")
 def ADC(cpu: ICPU, ins: Instruction):
     # A,Z,C,N = A + M + C
-    C = cpu.regs.P & Flags.C
+    C = cpu.regs.P.C
     A = cpu.regs.A
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     
     result, is_negative, carry, overflow = add_8bit(A, M, C)
 
     if result == 0:
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if carry:
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
         
     if is_negative:
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     if overflow:
-        cpu.regs.P |= Flags.V
+        cpu.regs.P.V = 1
     else:
-        cpu.regs.P &= ~Flags.V
-        \
+        cpu.regs.P.V = 0
 
     cpu.regs.A = result
     cpu.defer_cycles += ins.cycles[0]
@@ -170,9 +169,9 @@ def AND(cpu: ICPU, ins: Instruction):
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     result = A & M
     if result == 0:
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     if result >> 7:
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
 
     cpu.regs.A = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -187,21 +186,21 @@ def ASL(cpu: ICPU, ins: Instruction):
 
     if (result & 0xFF) == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (M >> 7 )& 0x01:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     if ins.addressing_method == AddressingMethod.acc:
         cpu.regs.A = result & 0xFF
@@ -213,7 +212,7 @@ def ASL(cpu: ICPU, ins: Instruction):
 
 @method_register("BCC")
 def BCC(cpu: ICPU, ins: Instruction):
-    if not (cpu.regs.P & Flags.C):
+    if not cpu.regs.P.C:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -221,7 +220,7 @@ def BCC(cpu: ICPU, ins: Instruction):
 
 @method_register("BCS")
 def BCS(cpu: ICPU, ins: Instruction):
-    if cpu.regs.P & Flags.C:
+    if cpu.regs.P.C:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -229,7 +228,7 @@ def BCS(cpu: ICPU, ins: Instruction):
 
 @method_register("BEQ")
 def BEQ(cpu: ICPU, ins: Instruction):
-    if cpu.regs.P & Flags.Z:
+    if cpu.regs.P.Z:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -243,23 +242,23 @@ def BIT(cpu: ICPU, ins: Instruction):
     result = M & A
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     # V
     m6 = ((M >> 6) & 0x01)
     if m6 == 1:
-        cpu.regs.P |= Flags.V
+        cpu.regs.P.V = 1
     else:
-        cpu.regs.P &= ~Flags.V
+        cpu.regs.P.V = 0
 
     # N
     m7 = ((M >> 7) & 0x01)
     if m7 == 1:
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.defer_cycles += ins.cycles[0]
 
@@ -267,7 +266,7 @@ def BIT(cpu: ICPU, ins: Instruction):
 @method_register("BMI")
 def BMI(cpu: ICPU, ins: Instruction):
     # check if N flag is set
-    if cpu.regs.P & Flags.N:
+    if cpu.regs.P.N:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -276,7 +275,7 @@ def BMI(cpu: ICPU, ins: Instruction):
 @method_register("BNE")
 def BNE(cpu: ICPU, ins: Instruction):
     # check if Z flag is not set
-    if not (cpu.regs.P & Flags.Z):
+    if not cpu.regs.P.Z:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -285,7 +284,7 @@ def BNE(cpu: ICPU, ins: Instruction):
 @method_register("BPL")
 def BPL(cpu: ICPU, ins: Instruction):
     # check if N flag is not set
-    if not (cpu.regs.P & Flags.N):
+    if not cpu.regs.P.N:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -299,14 +298,14 @@ def BRK(cpu: ICPU, ins: Instruction):
     push_byte(cpu, cpu.regs.P)
 
     cpu.regs.PC = cpu.bus.read_word(cpu.IRQ_ADDR)
-    cpu.regs.P |= Flags.B
+    cpu.regs.P.B = 1
 
     cpu.defer_cycles += ins.cycles[0]
 
 
 @method_register("BVC")
 def BVC(cpu: ICPU, ins: Instruction):
-    if not (cpu.regs.P & Flags.V):
+    if not cpu.regs.P.V:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
     
@@ -314,7 +313,7 @@ def BVC(cpu: ICPU, ins: Instruction):
 
 @method_register("BVS")
 def BVS(cpu: ICPU, ins: Instruction):
-    if cpu.regs.P & Flags.V:
+    if cpu.regs.P.V:
         cpu.regs.PC = ins.addr
         cpu.defer_cycles += 1
 
@@ -324,28 +323,28 @@ def BVS(cpu: ICPU, ins: Instruction):
 @method_register("CLC")
 def CLC(cpu: ICPU, ins: Instruction):
     # clear C flag
-    cpu.regs.P &= ~Flags.C
+    cpu.regs.P.C = 0
     cpu.defer_cycles += ins.cycles[0]
 
 
 @method_register("CLD")
 def CLD(cpu: ICPU, ins: Instruction):
     # clear D flag
-    cpu.regs.P &= ~Flags.D
+    cpu.regs.P.D = 0
     cpu.defer_cycles += ins.cycles[0]
 
 
 @method_register("CLI")
 def CLI(cpu: ICPU, ins: Instruction):
     # clear I flag
-    cpu.regs.P &= ~Flags.I
+    cpu.regs.P.I = 0
     cpu.defer_cycles += ins.cycles[0]
 
 
 @method_register("CLV")
 def CLV(cpu: ICPU, ins: Instruction):
     # clear V flag
-    cpu.regs.P &= ~Flags.V
+    cpu.regs.P.V = 0
     cpu.defer_cycles += ins.cycles[0]
 
 
@@ -359,21 +358,21 @@ def CMP(cpu: ICPU, ins: Instruction):
     result = A - M
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else: 
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if result >= 0:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x1:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
 
     cpu.defer_cycles += ins.cycles[0]
@@ -388,21 +387,21 @@ def CPX(cpu: ICPU, ins: Instruction):
     result = X - M
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else: 
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if result >= 0:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x1:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.defer_cycles += ins.cycles[0]
 
@@ -417,21 +416,21 @@ def CPY(cpu: ICPU, ins: Instruction):
     result = Y - M
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else: 
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if result >= 0:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x1:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
 
     cpu.defer_cycles += ins.cycles[0]
@@ -445,15 +444,15 @@ def DEC(cpu: ICPU, ins: Instruction):
     result, is_negative, carry, overflow = sub_8bit(M, 1)
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if is_negative:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.bus.write_byte(addr, result & 0xFF)
     cpu.defer_cycles += ins.cycles[0]
@@ -466,15 +465,15 @@ def DEX(cpu: ICPU, ins: Instruction):
     result, is_negative, carry, overflow = sub_8bit(X, 1)
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if is_negative:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.X = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -487,15 +486,15 @@ def DEY(cpu: ICPU, ins: Instruction):
     result, is_negative, carry, overflow = sub_8bit(Y, 1)
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if is_negative:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.Y = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -509,15 +508,15 @@ def EOR(cpu: ICPU, ins: Instruction):
     result = A ^ M
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (result >> 7) & 0x01 :
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.A = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -531,15 +530,15 @@ def INC(cpu: ICPU, ins: Instruction):
     result, is_negative, carry, overflow = add_8bit(M, 1)
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if is_negative:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.bus.write_byte(addr, result & 0xFF)
     cpu.defer_cycles += ins.cycles[0]
@@ -552,15 +551,15 @@ def INX(cpu: ICPU, ins: Instruction):
     result, is_negative, carry, overflow = add_8bit(X, 1)
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if is_negative:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.X = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -573,15 +572,15 @@ def INY(cpu: ICPU, ins: Instruction):
     result, is_negative, carry, overflow = add_8bit(Y, 1)
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if is_negative:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.Y = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -613,15 +612,15 @@ def LDA(cpu: ICPU, ins: Instruction):
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     if M == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (M >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.A = M
     cpu.defer_cycles += ins.cycles[0]
@@ -634,15 +633,15 @@ def LDX(cpu: ICPU, ins: Instruction):
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     if M == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (M >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.X = M
     cpu.defer_cycles += ins.cycles[0]
@@ -655,15 +654,15 @@ def LDY(cpu: ICPU, ins: Instruction):
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     if M == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (M >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.Y = M
     cpu.defer_cycles += ins.cycles[0]
@@ -678,21 +677,21 @@ def LSR(cpu: ICPU, ins: Instruction):
     result = M >> 1
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if M & 0x01:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     if ins.addressing_method == AddressingMethod.acc:
         cpu.regs.A = result & 0xFF
@@ -715,15 +714,15 @@ def ORA(cpu: ICPU, ins: Instruction):
     result = A | M
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (result >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.A = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -742,7 +741,7 @@ def PHA(cpu: ICPU, ins: Instruction):
 def PHP(cpu: ICPU, ins: Instruction):
     # push P
     # push_byte(cpu.regs.P)
-    push_byte(cpu, cpu.regs.P | Flags.B) # TODO:WTF? It's maybe a bug of NES CPU?
+    push_byte(cpu, cpu.regs.P.read() | Flags.B) # TODO:WTF? It's maybe a bug of NES CPU?
     cpu.defer_cycles += ins.cycles[0]
 
 
@@ -753,15 +752,15 @@ def PLA(cpu: ICPU, ins: Instruction):
     A = pull_byte(cpu)
     if A == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (A >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     # cpu.regs.A = A
     
@@ -778,7 +777,7 @@ def PLP(cpu: ICPU, ins: Instruction):
     # cpu.regs.P = P
 
     # TODO:WTF? It's maybe a bug of NES CPU?
-    cpu.regs.P = P & (~Flags.B) | Flags.U
+    cpu.regs.P.write(P & (~Flags.B) | Flags.U)
     cpu.defer_cycles += ins.cycles[0]
 
 
@@ -787,24 +786,24 @@ def ROL(cpu: ICPU, ins: Instruction):
     # M = M << 1 | C
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     addr = ins.addr
-    result = (M << 1) | (cpu.regs.P & Flags.C)
+    result = (M << 1) | cpu.regs.P.C
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (M >> 7) & 0x01:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     if ins.addressing_method == AddressingMethod.acc:
         cpu.regs.A = result & 0xFF
@@ -818,24 +817,24 @@ def ROR(cpu: ICPU, ins: Instruction):
     # M = (C << 7) | (M >> 1)
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
     addr = ins.addr
-    result = ((cpu.regs.P & Flags.C) << 7 )| ( M  >> 1 )
+    result = (cpu.regs.P.C << 7 )| ( M  >> 1 )
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if M  & 0x01:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     if ins.addressing_method == AddressingMethod.acc:
         cpu.regs.A = result & 0xFF
@@ -849,7 +848,7 @@ def RTI(cpu: ICPU, ins: Instruction):
     # pull P, pull PC
 
     P = pull_byte(cpu)
-    cpu.regs.P = P | Flags.U
+    cpu.regs.P.write(P | Flags.U)
 
     # PC_lo = pull_byte(cpu)
     # PC_hi = pull_byte(cpu)
@@ -876,34 +875,34 @@ def RTS(cpu: ICPU, ins: Instruction):
 #     # A,Z,C,N = A - M - (1 - C)
 #     A = cpu.regs.A
 #     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
-#     carry = (cpu.regs.P & Flags.C) ^ 0x01
+#     carry = cpu.regs.P.C ^ 0x01
 #     result, is_negative, carry, overflow = sub_8bit(A, M, carry)
     
 #     if result == 0:
 #         # Z
-#         cpu.regs.P |= Flags.Z
+#         cpu.regs.P.Z = 1
 #     else:
-#         cpu.regs.P &= ~Flags.Z
+#         cpu.regs.P.Z = 0
 
 #     if is_negative:
 #         # N
-#         cpu.regs.P |= Flags.N
+#         cpu.regs.P.N = 1
 #     else:
-#         cpu.regs.P &= ~Flags.N
+#         cpu.regs.P.N = 0
 
 #     if carry:
 #         # C
-#         cpu.regs.P |= Flags.C
+#         cpu.regs.P.C = 1
 #     else:
-#         cpu.regs.P &= ~Flags.C
+#         cpu.regs.P.C = 0
 
 #     if overflow:
 #         # V
-#         # cpu.regs.P &= ~Flags.C    
-#         cpu.regs.P |= Flags.V
+#         # cpu.regs.P.C = 0    
+#         cpu.regs.P.V = 1
 #     else:
-#         # cpu.regs.P |= Flags.C
-#         cpu.regs.P &= ~Flags.V
+#         # cpu.regs.P.C = 1
+#         cpu.regs.P.V = 0
 
 
 
@@ -918,7 +917,7 @@ def SBC(cpu: ICPU, ins: Instruction):
 
     A = cpu.regs.A
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
-    carry = (cpu.regs.P & Flags.C) ^ 0x01
+    carry = cpu.regs.P.C ^ 0x01
 
     # Subtract M and the inverted carry from A
     result = A - M - carry
@@ -933,30 +932,30 @@ def SBC(cpu: ICPU, ins: Instruction):
     # result &= 0xFF
     # 处理进位和溢出
     if carry_flag:
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
 
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
 
     # 处理零标志
     if zero_flag:
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     # 处理溢出标志 (如果符号位不正确)
     if overflow_flag:
-        cpu.regs.P |= Flags.V
+        cpu.regs.P.V = 1
     else:
-        # cpu.regs.P |= Flags.C
-        cpu.regs.P &= ~Flags.V
+        # cpu.regs.P.C = 1
+        cpu.regs.P.V = 0
 
     # 处理负标志
     if negative_flag:
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
     # TODO: check Overflow Flag
 
     cpu.regs.A = result & 0xFF
@@ -967,21 +966,21 @@ def SBC(cpu: ICPU, ins: Instruction):
 @method_register("SEC")
 def SEC(cpu: ICPU, ins: Instruction):
     # C = 1
-    cpu.regs.P |= Flags.C
+    cpu.regs.P.C = 1
     cpu.defer_cycles += ins.cycles[0]
 
 
 @method_register("SED")
 def SED(cpu: ICPU, ins: Instruction):
     # D = 1
-    cpu.regs.P |= Flags.D
+    cpu.regs.P.D = 1
     cpu.defer_cycles += ins.cycles[0]
 
 
 @method_register("SEI")
 def SEI(cpu: ICPU, ins: Instruction):
     # I = 1
-    cpu.regs.P |= Flags.I
+    cpu.regs.P.I = 1
     cpu.defer_cycles += ins.cycles[0]
 
 
@@ -1018,15 +1017,15 @@ def TAX(cpu: ICPU, ins: Instruction):
     X = cpu.regs.A
     if X == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (X >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.X = X
     cpu.defer_cycles += ins.cycles[0]
@@ -1038,15 +1037,15 @@ def TAY(cpu: ICPU, ins: Instruction):
     Y = cpu.regs.A
     if Y == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (Y >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.Y = Y
     cpu.defer_cycles += ins.cycles[0]
@@ -1058,15 +1057,15 @@ def TSX(cpu: ICPU, ins: Instruction):
     X = cpu.regs.SP
     if X == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (X >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.X = X
     cpu.defer_cycles += ins.cycles[0]
@@ -1078,15 +1077,15 @@ def TXA(cpu: ICPU, ins: Instruction):
     A = cpu.regs.X
     if A == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (A >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.A = A
     cpu.defer_cycles += ins.cycles[0]
@@ -1105,15 +1104,15 @@ def TYA(cpu: ICPU, ins: Instruction):
     A = cpu.regs.Y
     if A == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else:
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if (A >> 7) & 0x01:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.A = A
     cpu.defer_cycles += ins.cycles[0]
@@ -1225,7 +1224,7 @@ def ISC(cpu: ICPU, ins: Instruction):
 @method_register("ANC")
 def ANC(cpu: ICPU, ins: Instruction):
     AND(cpu, ins)
-    cpu.regs.P &= ~Flags.C
+    cpu.regs.P.C = 0
     cpu.regs.P |= (cpu.regs.A >> 7) & Flags.C
     cpu.defer_cycles = ins.cycles[0]
 
@@ -1265,21 +1264,21 @@ def AXS(cpu: ICPU, ins: Instruction):
 
     if result == 0:
         # Z
-        cpu.regs.P |= Flags.Z
+        cpu.regs.P.Z = 1
     else: 
-        cpu.regs.P &= ~Flags.Z
+        cpu.regs.P.Z = 0
 
     if result >= 0:
         # C
-        cpu.regs.P |= Flags.C
+        cpu.regs.P.C = 1
     else:
-        cpu.regs.P &= ~Flags.C
+        cpu.regs.P.C = 0
 
     if (result >> 7) & 0x1:
         # N
-        cpu.regs.P |= Flags.N
+        cpu.regs.P.N = 1
     else:
-        cpu.regs.P &= ~Flags.N
+        cpu.regs.P.N = 0
 
     cpu.regs.X = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]

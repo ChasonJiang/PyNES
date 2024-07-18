@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from .interface import IBus
 
-from .ppu import PPURegisterManager
+from .io_register import PPURegisterManager
 from .interface import IController
 # from cpu import ICPU
 from .exceptions import CartridgeNotFound, InvalidAddress
@@ -68,6 +68,9 @@ class CPUBus(IBus):
                 # OAMDMA
                 # TODO: check this implementation
                 addr = data * 0x100
+                if addr > 0x07ff or addr < 0x0200:
+                    # LOGGER.warn(f"CPUBus: OAMDMA address out of range: {hex(addr)}")
+                    raise RuntimeError(f"CPUBus: OAMDMA address out of range: {hex(addr)}")
                 sprite_data = self.memory.read(addr, 256)
                 self.ppu_reg_manager.write_for_cpu(address, sprite_data)
     
@@ -149,13 +152,15 @@ class CPUBus(IBus):
 class PPUBus(IBus):
     memory:IMemory = None
     cartridge:ICatridge = None
+    palette_index_memory:IMemory = None
 
     is_horizontal_mirror:bool = True
 
     exist_extended_vram:bool = False
 
-    def __init__(self, memory:IMemory, ):
+    def __init__(self, memory:IMemory, palette_index_memory:IMemory):
         self.memory = memory
+        self.palette_index_memory = palette_index_memory
 
     def set_cartridge(self, cartridge:ICatridge):
         self.cartridge = cartridge
@@ -216,8 +221,8 @@ class PPUBus(IBus):
             # palette
             address -= 0x3f00
             address %= 0x20
-            # palette
-            LOGGER.warn(f"CPUBus: palette not implemented")
+            self.palette_index_memory.write(address, data)
+            # LOGGER.warn(f"CPUBus: palette not implemented")
         else:
             raise InvalidAddress(f"Cannot access memory at {hex(address)}")
         
@@ -272,8 +277,8 @@ class PPUBus(IBus):
             address -= 0x3f00
             address %= 0x20
             # palette
-            LOGGER.warn(f"CPUBus: palette not implemented")
-            return 0x11
+            # LOGGER.warn(f"CPUBus: palette not implemented")
+            return self.palette_index_memory.read(address)
 
         else:
             raise InvalidAddress(f"Cannot access memory at {hex(address)}")

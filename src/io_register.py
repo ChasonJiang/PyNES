@@ -6,11 +6,14 @@
 
 
 
+import logging
 
 from abc import ABC
+from typing import List
 
-from .interface import IORegister
+from .interface import IPPU, IBus, IORegister
 
+LOGGER = logging.getLogger(__name__)
 
 
 
@@ -266,3 +269,133 @@ class PPUInternalRegister():
     t:bytes = 0
     x:bytes = 0
     w_latch:bool = True
+
+
+
+
+class PPURegisterManager:
+    internal_buffer:bytes = 0x00
+    internal_reg:PPUInternalRegister = PPUInternalRegister()
+    addr_reg:AddressRegister = AddressRegister()
+    ctrl_reg:ControlRegister = ControlRegister()
+    mask_reg:MaskRegister = MaskRegister()
+    status_reg:StatusRegister = StatusRegister()
+    scroll_reg:bytearray = bytearray(2)
+    oam_addr_reg:bytes = 0x00
+    # oam_data_reg:bytes = 0x00
+    # oam_dma_reg:bytes = 0x00
+
+    # To save sprite data
+    oam_data:bytearray = bytearray(256)
+
+
+    ppu_bus:IBus = None
+    ppu:IPPU = None
+
+
+    def __init__(self, ppu, ppu_bus: IBus):
+        self.ppu_bus = ppu_bus
+        self.ppu = ppu
+
+    def read_for_cpu(self, address: int) -> bytes:
+        if address in [0x2000, 0x2001, 0x2003, 0x2005, 0x2006, 0x4014]:
+            # raise RuntimeError(f"Attempt to read from write-only PPU address {address:04X}")
+            LOGGER.warn(f"PPURegisterManager: Attempt to read from write-only IORegister at {address:04X}, it will be returned as 0x00")
+            # access write-only PPU register
+            return 0x00
+        elif address == 0x2002:
+            # Status Register
+            result = self.status_reg.read()
+            self.status_reg.clear_vblank()
+            self.internal_reg.w_latch = True
+            return result
+        elif address == 0x2004:
+            # OAM Data Register
+            # result = self.oam_data_reg
+            return self.oam_data[self.oam_addr_reg]
+        elif address == 0x2007:
+            addr = self.addr_reg.read()
+            self.addr_reg.increment(self.ctrl_reg.get_increment())
+            if addr < 0x3f00:
+                result = self.internal_buffer
+                self.internal_buffer = self.ppu_bus.read_byte(addr)
+                return result
+            else:
+                return self.ppu_bus.read_byte(addr)
+
+    def write_for_cpu(self, address: int, data: bytes|bytearray):
+
+        self.internal_buffer = data
+
+        if address == 0x2000:
+            # Control Register
+            before_nmi_status = self.ctrl_reg.GENERATE_NMI
+            self.ctrl_reg.write(data)
+            if not before_nmi_status \
+                and self.ctrl_reg.GENERATE_NMI \
+                and self.status_reg.VBLANK:
+
+                self.ppu.nmi_for_cpu()
+                
+        elif address == 0x2001:
+            # Mask Register
+            # TODO:check if mask register is implemented
+            # print("Warning: PPU Mask Register is not implemented")
+            self.mask_reg.write(data)
+        elif address == 0x2002:
+            # Status Register
+            # TODO:check if status register is implemented
+            # print("Warning: PPU Status Register is not implemented")
+            # self.status_reg.write(data)
+            LOGGER.warn(f"PPURegisterManager: Attempt to write to PPU Status Register at {address:04X}, it will be ignored")
+        elif address == 0x2003:
+            # OAM Address Register
+            # TODO: check if oam address register is implemented
+            # print("Warning: PPU OAM Address Register is not implemented")
+            self.oam_addr_reg = data
+        elif address == 0x2004:
+            # OAM Data Register
+            # TODO: check if oam data register is implemented
+            # print("Warning: PPU OAM Data Register is not implemented")
+            # self.oam_data_reg = data
+            self.oam_data[self.oam_addr_reg] = data
+            self.oam_addr_reg += 1
+            self.oam_addr_reg %= 256
+        elif address == 0x2005:
+            # Scroll Register
+            # TODO: check if scroll register is implemented
+            # print("Warning: PPU Scroll Register is not implemented")
+            # share address register state
+            
+            if self.internal_reg.w_latch:
+                self.scroll_reg[0] = data
+            else:
+                self.scroll_reg[1] = data
+            self.update_w_latch()
+
+        elif address == 0x2006:
+            # PPU Address Register
+
+            self.addr_reg.update(data, self.internal_reg.w_latch)
+            self.update_w_latch()
+            # self.addr_reg.increment(self.ctrl_reg.get_increment())
+
+        elif address == 0x2007:
+            # PPU Data Register
+            addr = self.addr_reg.read()
+            self.addr_reg.increment(self.ctrl_reg.get_increment())
+            self.ppu_bus.write_byte(addr, data)
+        elif address == 0x4014:
+            # OAM DMA
+            # print("Warning: PPU OAM DMA is not implemented")
+
+            for i in range(256):
+                addr = (self.oam_addr_reg + i)%256
+                self.oam_data[addr] = data[i]
+        else:
+            raise ValueError(f"Invalid PPU Register Address: {address}")
+        
+    def update_w_latch(self):
+        self.internal_reg.w_latch = not self.internal_reg.w_latch
+
+

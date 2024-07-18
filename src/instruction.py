@@ -426,7 +426,7 @@ class Instruction:
     mnemonic:str = ""
     addressing_method:AddressingMethod = None
     length:int = 0
-    cycles:Tuple[int, int]|Tuple[int, int, int] = 0
+    cycles:Tuple[int, int]|Tuple[int, int, int] = (0, )
 
     opcode:bytes = None
     operand1:bytes = None
@@ -440,23 +440,14 @@ class Instruction:
         self.opcode = opcode
 
 
-    # def decode(self, cpu:ICPU):
-    #     self.instruction_info = INSTRUCTION_TABLE.get(self.opcode[0], None)
-    #     if self.instruction_info is None:
-    #         raise Exception(f"Unknown instruction: {self.opcode.hex()}")
-    #     self.mnemonic = self.instruction_info[0]
-    #     self.addressing_method = self.instruction_info[1]
-    #     self.length = self.instruction_info[2]
-    #     self.cycles = self.instruction_info[3]
-        
-    #     operand_len = self.length - 1
-
-    #     if operand_len == 1:
-    #         self.operand1 = cpu.bus.read_byte(cpu.regs.PC)
-    #         cpu.regs.PC += 1
-
-    #     elif operand_len == 2:
-    #         self.operand1 = cpu.bus.read_byte(cpu.regs.PC)
-    #         cpu.regs.PC += 1
-    #         self.operand2 = cpu.bus.read_byte(cpu.regs.PC)
-    #         cpu.regs.PC += 1
+    def reset(self):
+        self.mnemonic = ""
+        self.addressing_method = None
+        self.length = 0
+        self.cycles = (0, )
+        self.opcode = None
+        self.operand1 = None
+        self.operand2 = None
+        self.data = None
+        self.addr = None
+        self.instruction_info = None
