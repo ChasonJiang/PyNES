@@ -1,6 +1,6 @@
 import logging
 # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', filename='nes.log', filemode='w')
-logging.basicConfig(level=logging.ERROR, format='%(levelname)s - %(message)s', filename='nes.log', filemode='w')
+logging.basicConfig(level=logging.ERROR, format='%(levelname)s - %(message)s', filename='logs/nes.log', filemode='w')
 
 # from cpu import CPU
 from typing import Tuple
