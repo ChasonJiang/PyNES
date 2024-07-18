@@ -3,4 +3,4 @@ assets
 .vscode
 bugger
 roms
-./**/__pycache__
+src/__pycache__
