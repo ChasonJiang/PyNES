@@ -90,8 +90,8 @@ class PPU(IPPU):
 
 
     def register_renderer(self, renderer: Callable, args:tuple=(), kwargs:dict={}):
-
         self.renderers[renderer.__name__] = (renderer, args, kwargs)
+        
 
     def _call_renderer(self):
         self.render()
@@ -159,22 +159,19 @@ class PPU(IPPU):
         tile_offset_x = view_port_offset_x//8
         tile_offset_y = view_port_offset_y//8
         tile_idx = 0
-        is_next_nametable = False
         is_horizontal_mirror = self.bus.is_horizontal_mirror
         if not is_horizontal_mirror:
             if 31 - tile_offset_x >= tile_x:
                 tile_idx = tile_y * 32 + (tile_x + tile_offset_x)
             else:
                 tile_idx = tile_y * 32 + (tile_x -(31 - tile_offset_x)) + 0x400
-                is_next_nametable = True
         else:
             if 29 - tile_offset_y >= tile_y:
                 tile_idx = (tile_y + tile_offset_y) * 32 + tile_x
             else:
                 tile_idx = (tile_y + tile_offset_y - 29) * 32 + tile_x + 0x400
-                is_next_nametable = True
 
-        return tile_idx, is_next_nametable
+        return tile_idx
 
     # @lru_cache(maxsize=960)
     def tile_idx_to_tile_pos(self, tile_idx:int):
@@ -193,7 +190,7 @@ class PPU(IPPU):
         for offset in range(960):
             # Get Tile Index from Nametable
             tile_x, tile_y = self.tile_idx_to_tile_pos(offset)
-            tile_idx, is_next_nametable = self.tile_pos_to_tile_idx(tile_x, tile_y, view_port_offset_x, view_port_offset_y)
+            tile_idx = self.tile_pos_to_tile_idx(tile_x, tile_y, view_port_offset_x, view_port_offset_y)
             tile_addr = nametable_base_addr + tile_idx
             pattern_idx = self.bus.read_byte(tile_addr)
 
