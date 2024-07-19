@@ -216,7 +216,7 @@ class StatusRegister(IORegister):
     VBLANK:bytes = 0
     SPRITE_ZERO_HIT:bytes = 0
     SPRITE_OVERFLOW:bytes = 0
-    VRAM_WRITE_FLAG:bytes = 0
+    VRAM_WRITE_FLAG:bytes = 1
 
     def read(self,):
         result = (self.VBLANK << 7) | (self.SPRITE_ZERO_HIT << 6) \

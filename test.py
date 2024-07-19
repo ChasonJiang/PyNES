@@ -3,7 +3,8 @@ import logging
 logging.basicConfig(level=logging.ERROR, format='%(levelname)s - %(message)s', filename='logs/nes.log', filemode='w')
 
 # from cpu import CPU
-from typing import Tuple
+import random
+from typing import List, Tuple
 from src.frame import NPFrame
 from src.instruction import INSTRUCTION_TABLE
 from src.machine import Machine
@@ -15,7 +16,6 @@ from src.cpu import CPUHookType
 # def t1(d:dict):
 #     d["a"] = 1
 #     print(f"t1 d: {d}")
-
 
 def status_hook(status: dict, result:dict):
     result["status"] = status
@@ -34,7 +34,8 @@ def status_hook(status: dict, result:dict):
             operand = f"#${instrucion.data:04X}"
         else:
             operand = f"${instrucion.addr:04X}"
-
+    # with open(f"logs/nes_e.log", "a", encoding='utf-8') as f:
+    #     f.write(f"{address:04X}\t{instrucion.mnemonic:<4} A:{A:02X} X:{X:02X} Y:{Y:02X} P:{P:02X} SP:{SP:02X} CYC:{CYC}\n")
     print(f"{address:04X}\t{instrucion.mnemonic:<4} {operand:<10} A:{A:02X} X:{X:02X} Y:{Y:02X} P:{P:02X} SP:{SP:02X} CYC:{CYC}")
 
 
@@ -62,14 +63,23 @@ def load_test_data(file_path:str):
         P = int(line[p:p+4].split(":")[-1], 16)
         p += 4+1
         SP = int(line[p:p+5].split(":")[-1], 16)
-
-        _data.append((addr, instr, A, X, Y, P, SP))
+        CYC = int(line.split("CYC:")[-1].strip())
+        _data.append((addr, instr, A, X, Y, P, SP, CYC))
         
     
     return _data
 
+def convert_to_log():
+    data = load_test_data("logs/Mario.log")
+    with open('logs/Mario_e.log', 'w', encoding='utf-8') as f:
+        for item in data:
+            addr, instr, A, X, Y, P, SP, CYC = item
+            f.write(f"{addr:04X}\t{instr:<4} A:{A:02X} X:{X:02X} Y:{Y:02X} P:{P:02X} SP:{SP:02X} CYC:{CYC}\n")
+    
+    
+
 def check_test_data(result:dict, test_data:Tuple):
-    addr, instr, A, X, Y, P, SP = test_data
+    addr, instr, A, X, Y, P, SP, CYC = test_data
     status = result["status"]
 
     result = ""
@@ -97,13 +107,14 @@ def test_cpu(breakpoint_addr=None):
     m=Machine(c)
     m.hook_enable(True)
     m.reset(0x0C000)
+    # m.reset()
     status_result = {}
     m.register_cpu_hook(CPUHookType.STATUS, status_hook, (status_result,))
 
 
     test_data = load_test_data("bugger/test_rom/nestest.log")
     for item in test_data:
-        addr, instr, A, X, Y, P, SP = item
+        addr, instr, A, X, Y, P, SP, CYC = item
         # print(f"{addr:04X}\t{instr:<4} A:{A:02X} X:{X:02X} Y:{Y:02X} P:{P:02x} SP:{SP:02X}")
         m.debug_step()
         chech_result = check_test_data(status_result, item)
@@ -145,7 +156,7 @@ def show_bg():
     from PIL import Image
     import numpy as np
 
-    c=Cartridge("bugger/test_rom/nestest2.nes")
+    c=Cartridge("roms/Super Mario Bros (E).nes")
 
     pattern_base_addr = 0x1000
 
@@ -180,11 +191,113 @@ def show_bg():
     img = Image.fromarray(frame.data.transpose(2,1,0), 'RGB')
     img.show()
 
+
+
+def compare_log():
+    with open("logs/nes_e.log", "r", encoding='utf-8') as f:
+        data1 = f.readlines()
+    with open("logs/Mario_e.log", "r", encoding='utf-8') as f:
+        data2 = f.readlines()
+    next(data2)
+    for i in range(len(data1), ):
+        d = next(data2)
+        if data1[i] != d:
+            print(f"Diff at {i}: {data1[i]} vs {data2[i]}")
+            break
+
+
+
+def test_bus():
+    c=Cartridge("bugger/test_rom/nestest2.nes")
+    m=Machine(c)
+    m.hook_enable(True)
+    m.reset()
+
+
+    # test cpu ram
+    for i in range(0x0000, 0x2000-1):
+        data = random.randint(0, 0xff)
+        m.cpu_bus.write_byte(i, data)
+        if m.cpu_bus.read_byte(i) != data:
+            print(f"test cpu ram: Error at {i:04X}")
+            break
+        m.cpu_bus.write_word(i, (data<<8 )| data)
+        if m.cpu_bus.read_word(i) != (data<<8 )| data:
+            print(f"test cpu ram: Error at {i:04X}")
+            break
+    
+    # test ppu ram
+    for i in range(0x2000, 0x3F00-1):
+        data = random.randint(0, 0xff)
+        m.ppu_bus.write_byte(i, data)
+        if m.ppu_bus.read_byte(i) != data:
+            print(f"test ppu ram: Error at {i:04X}")
+            break
+        m.ppu_bus.write_word(i, (data<<8 )| data)
+        if m.ppu_bus.read_word(i) != (data<<8 )| data:
+            print(f"test ppu ram: Error at {i:04X}")
+            break
+
+    
+    # test ppu pallete
+    for i in range(0x3F00, 0x4000-1):
+        data = random.randint(0, 0xff)
+        m.ppu_bus.write_byte(i, data)
+        if m.ppu_bus.read_byte(i) != data:
+            print(f"test ppu pallete: Error at {i:04X}")
+            break
+        m.ppu_bus.write_word(i, (data<<8 )| data)
+        if m.ppu_bus.read_word(i) != (data<<8 )| data:
+            print(f"test ppu pallete: Error at {i:04X}")
+            break
+
+    # test cpu rom
+    for i in range(0x8000, 0x10000-1):
+        data = random.randint(0, 0xff)
+        m.cpu_bus.write_byte(i, data)
+        if m.cpu_bus.read_byte(i) != data:
+            print(f"test cpu rom: Error at {i:04X}")
+            break
+        m.cpu_bus.write_word(i, (data<<8 )| data)
+        if m.cpu_bus.read_word(i) != (data<<8 )| data:
+            print(f"test cpu rom: Error at {i:04X}")
+            break
+
+    # test ppu rom
+    for i in range(0x0000, 0x2000-1):
+        data = random.randint(0, 0xff)
+        m.ppu_bus.write_byte(i, data)
+        if m.ppu_bus.read_byte(i) != data:
+            print(f"test ppu rom: Error at {i:04X}")
+            break
+        m.ppu_bus.write_word(i, (data<<8 )| data)
+        if m.ppu_bus.read_word(i) != (data<<8 )| data:
+            print(f"test ppu rom: Error at {i:04X}")
+            break
+
+    # test ppu mirror
+    for i in range(0x4000, 0x10000-1):
+        data = random.randint(0, 0xff)
+        m.ppu_bus.write_byte(i, data)
+        if m.ppu_bus.read_byte(i) != data:
+            print(f"test ppu mirror: Error at {i:04X}")
+            break
+        m.ppu_bus.write_word(i, (data<<8 )| data)
+        if m.ppu_bus.read_word(i) != (data<<8 )| data:
+            print(f"test ppu mirror: Error at {i:04X}")
+            break
+
+
+
 if __name__ == '__main__':
 
     # test_cpu()
     test_all()
     # show_bg()
+    # convert_to_log()
+    # compare_log()
+
+    # test_bus()
 
 
 

@@ -133,7 +133,7 @@ class CPU(ICPU):
             self.cycle()
         else:
             self.defer_cycles -= 1
-        self.cycles += 1
+            self.cycles += 1
     
     def cycle(self,):
         if self.nmi_enabled:

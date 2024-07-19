@@ -161,6 +161,77 @@ def ADC(cpu: ICPU, ins: Instruction):
     cpu.regs.A = result
     cpu.defer_cycles += ins.cycles[0]
 
+# @method_register("ADC")
+# def ADC(cpu: ICPU, ins: Instruction):
+#     # A,Z,C,N = A + M + C
+#     C = cpu.regs.P.C
+#     A = cpu.regs.A
+#     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
+    
+#     if cpu.regs.P.D:
+#         halfcarry = 0
+#         decimalcarry = 0
+#         adjust0 = 0
+#         adjust1 = 0
+#         nibble0 = (M & 0xf) + (A & 0xf) + C
+#         if nibble0 > 9:
+#             adjust0 = 6
+#             halfcarry = 1
+#         nibble1 = ((M >> 4) & 0xf) + ((A >> 4) & 0xf) + halfcarry
+#         if nibble1 > 9:
+#             adjust1 = 6
+#             decimalcarry = 1
+
+#         # the ALU outputs are not decimally adjusted
+#         nibble0 = nibble0 & 0xf
+#         nibble1 = nibble1 & 0xf
+#         aluresult = (nibble1 << 4) + nibble0
+
+#         # the final A contents will be decimally adjusted
+#         nibble0 = (nibble0 + adjust0) & 0xf
+#         nibble1 = (nibble1 + adjust1) & 0xf
+
+#         cpu.regs.P.C = 0
+#         cpu.regs.P.Z = 0
+#         cpu.regs.P.V = 0
+#         cpu.regs.P.N = 0
+
+#         if aluresult == 0:
+#             cpu.regs.P.Z = 1
+#         else:
+#             cpu.regs.P.write( cpu.regs.P.read() | (aluresult & Flags.N))
+
+#         if decimalcarry == 1:
+#             cpu.regs.P.C = 1
+
+#         if (~(A ^ M) & (A ^ aluresult)) & Flags.N:
+#             cpu.regs.P.V = 1
+
+#         cpu.regs.A = (nibble1 << 4) + nibble0
+#     else:
+
+#         result = M + A + cpu.regs.P.C
+
+#         cpu.regs.P.C = 0
+#         cpu.regs.P.Z = 0
+#         cpu.regs.P.V = 0
+#         cpu.regs.P.N = 0
+
+#         if (~(A ^ M) & (A ^ result)) & cpu.regs.P.N:
+#             cpu.regs.P.V = 1
+
+#         data = result
+#         if data > 0x80:
+#             cpu.regs.P.C = 1
+#             data &= 0x80
+
+#         if data == 0:
+#             cpu.regs.P.Z = 1
+#         else:
+#             cpu.regs.P.write(cpu.regs.P.read() | (data & Flags.N))
+#         cpu.regs.A = data
+
+#     cpu.defer_cycles += ins.cycles[0]
 
 @method_register("AND")
 def AND(cpu: ICPU, ins: Instruction):
@@ -170,8 +241,13 @@ def AND(cpu: ICPU, ins: Instruction):
     result = A & M
     if result == 0:
         cpu.regs.P.Z = 1
-    if result >> 7:
+    else:
+        cpu.regs.P.Z = 0
+
+    if (result >> 7) & 0x01:
         cpu.regs.P.N = 1
+    else:
+        cpu.regs.P.N = 0
 
     cpu.regs.A = result & 0xFF
     cpu.defer_cycles += ins.cycles[0]
@@ -354,6 +430,10 @@ def CMP(cpu: ICPU, ins: Instruction):
     # Z,C,N = A-M
     A = cpu.regs.A
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
+    if M >> 7 == 1:
+        M = M & 0x7F - 128
+    if A >> 7 == 1:
+        A = A & 0x7F - 128
 
     result = A - M
     if result == 0:
@@ -384,6 +464,11 @@ def CPX(cpu: ICPU, ins: Instruction):
     # Z,C,N = X-M
     X = cpu.regs.X
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
+    if M >> 7 == 1:
+        M = M & 0x7F - 128
+    if X >> 7 == 1:
+        X = X & 0x7F - 128
+        
     result = X - M
     if result == 0:
         # Z
@@ -412,6 +497,11 @@ def CPY(cpu: ICPU, ins: Instruction):
     # Z,C,N = Y-M
     Y = cpu.regs.Y
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
+
+    if M >> 7 == 1:
+        M = M & 0x7F - 128
+    if Y >> 7 == 1:
+        Y = Y & 0x7F - 128
 
     result = Y - M
     if result == 0:
@@ -774,7 +864,7 @@ def PLP(cpu: ICPU, ins: Instruction):
     # pull P
 
     P = pull_byte(cpu)
-    # cpu.regs.P = P
+    # cpu.regs.P.write(P)
 
     # TODO:WTF? It's maybe a bug of NES CPU?
     cpu.regs.P.write(P & (~Flags.B) | Flags.U)
@@ -872,48 +962,75 @@ def RTS(cpu: ICPU, ins: Instruction):
 
 # @method_register("SBC")
 # def SBC(cpu: ICPU, ins: Instruction):
-#     # A,Z,C,N = A - M - (1 - C)
 #     A = cpu.regs.A
 #     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
-#     carry = cpu.regs.P.C ^ 0x01
-#     result, is_negative, carry, overflow = sub_8bit(A, M, carry)
-    
-#     if result == 0:
-#         # Z
-#         cpu.regs.P.Z = 1
-#     else:
-#         cpu.regs.P.Z = 0
 
-#     if is_negative:
-#         # N
-#         cpu.regs.P.N = 1
-#     else:
+#     if cpu.regs.P.D:
+#         halfcarry = 1
+#         decimalcarry = 0
+#         adjust0 = 0
+#         adjust1 = 0
+
+#         nibble0 = (A & 0xf) + (~M & 0xf) + cpu.regs.P.C
+#         if nibble0 <= 0xf:
+#             halfcarry = 0
+#             adjust0 = 10
+#         nibble1 = ((A >> 4) & 0xf) + ((~M >> 4) & 0xf) + halfcarry
+#         if nibble1 <= 0xf:
+#             adjust1 = 10 << 4
+
+#         # the ALU outputs are not decimally adjusted
+#         aluresult = A + (~M & 0X80) + cpu.regs.P.C
+
+#         if aluresult > 0X80:
+#             decimalcarry = 1
+#         aluresult &= 0X80
+
+#         # but the final result will be adjusted
+#         nibble0 = (aluresult + adjust0) & 0xf
+#         nibble1 = ((aluresult + adjust1) >> 4) & 0xf
+
+#         cpu.regs.P.C = 0
+#         cpu.regs.P.Z = 0
+#         cpu.regs.P.V = 0
 #         cpu.regs.P.N = 0
 
-#     if carry:
-#         # C
-#         cpu.regs.P.C = 1
+#         if aluresult == 0:
+#             cpu.regs.P.Z = 1
+#         else:
+#             cpu.regs.P.write(cpu.regs.P.read() | (aluresult & Flags.N))
+
+#         if decimalcarry == 1:
+#             cpu.regs.P.C = 1
+            
+#         if ((A ^ M) & (A ^ aluresult)) & Flags.N:
+#             cpu.regs.P.V = 1
+
+#         cpu.regs.A = (nibble1 << 4) + nibble0
 #     else:
+#         result = A + (~M & 0X80) + cpu.regs.P.C
+
 #         cpu.regs.P.C = 0
-
-#     if overflow:
-#         # V
-#         # cpu.regs.P.C = 0    
-#         cpu.regs.P.V = 1
-#     else:
-#         # cpu.regs.P.C = 1
+#         cpu.regs.P.Z = 0
 #         cpu.regs.P.V = 0
+#         cpu.regs.P.N = 0
+
+#         if ((A ^ M) & (A ^ result)) & Flags.N:
+#             cpu.regs.P.V = 1
+#         data = result & 0X80
+#         if data == 0:
+#             cpu.regs.P.Z = 1
+#         if result > 0X80:
+#             cpu.regs.P.C = 1
+#         cpu.regs.P.write(cpu.regs.P.read() | (data & Flags.N))
+#         cpu.regs.A = data
 
 
-
-
-#     # TODO: check Overflow Flag
-
-#     cpu.regs.A = result & 0xFF
 #     cpu.defer_cycles += ins.cycles[0]
 
 @method_register("SBC")
 def SBC(cpu: ICPU, ins: Instruction):
+    # TODO: check this implementation
 
     A = cpu.regs.A
     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)

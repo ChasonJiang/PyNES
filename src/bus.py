@@ -75,18 +75,21 @@ class CPUBus(IBus):
                 self.ppu_reg_manager.write_for_cpu(address, sprite_data)
     
             elif address == 0x4016:
-                # Joystick
+                # joypad
                 if self.controllers == {}:
                     LOGGER.warn(f"CPUBus: Controller not found")
                     return
-                for i in self.controllers.values():
-                    i.write(data)
-                return
+                for k, v in self.controllers.items():
+                    v.write(data)
+                
             else:
                 LOGGER.warn(f"CPUBus: IO registers not implemented")
         elif address < 0x6000:
             # TODO: Expansion ROM
             raise NotImplementedError("Expansion ROM not implemented")
+        elif address < 0x8000:
+            # TODO: SRAM
+            raise NotImplementedError("SRAM not implemented")
         elif address < 0x10000:
             # Cartridge
             if self.cartridge is None:
@@ -105,12 +108,10 @@ class CPUBus(IBus):
             # RAM
             # mirror for $0x0800-$0x1FFF
             address %= 0x0800
-
             return self.memory.read(address)
         elif address < 0x401f:
             # IO registers
-            # if address == 0x2000:
-            #     return self.ppu_reg_manager.ctrl_reg.read()
+
             if address < 0x2008 or address == 0x4014:
                 return self.ppu_reg_manager.read_for_cpu(address)
             elif address < 0x4000 and address >= 0x2008:
@@ -126,7 +127,8 @@ class CPUBus(IBus):
                 if self.controllers == {}:
                     LOGGER.warn(f"CPUBus: Controller not found")
                     return 0x00
-                return self.controllers[2].read()
+                # return self.controllers[2].read()
+                return self.controllers[1].read()
             else:
                 # TODO: IO registers
                 LOGGER.warn(f"CPUBus: IO registers not implemented")
@@ -135,10 +137,14 @@ class CPUBus(IBus):
         elif address < 0x6000:
             # TODO: Expansion ROM
             raise NotImplementedError("Expansion ROM not implemented")
+        elif address < 0x8000:
+            # TODO: SRAM
+            raise NotImplementedError("SRAM not implemented")
         elif address < 0x10000:
+            # Cartridge PRG-ROM
             if self.cartridge is None:
                 raise CartridgeNotFound("Cartridge not found")
-            # Cartridge
+            
             return self.cartridge.mapper.read(address)
         else:
             raise InvalidAddress(f"Cannot access memory at {hex(address)}")
@@ -180,30 +186,28 @@ class PPUBus(IBus):
             if self.cartridge is None:
                 raise CartridgeNotFound("Cartridge not found")
             self.cartridge.mapper.write(address, data)
+            # LOGGER.warn(f"PPUBus: CHR-ROM is write-only")
         elif address < 0x3f00: 
             # vram  (name table)
 
             if address >= 0x3000:
                 # for mirror
                 address -= 0x1000
+
             address -= 0x2000
-            # self.write_to_vram(address, data)
-            # offset = 0x0400 if self.is_horizontal_mirror else 0x0800
-            # self.write_to_vram(address + offset, data)
-            
             if self.is_horizontal_mirror:
                 # address %= 0x0800
                 if address < 0x0800:
                     address %= 0x0400
                     self.memory.write(address, data)
-                    if self.exist_extended_vram:
-                        self.cartridge.mapper.write(address, data)            
+                    # if self.exist_extended_vram:
+                    #     self.cartridge.mapper.write(address, data)            
                 else:
                     address %= 0x0400
                     address += 0x0400
                     self.memory.write(address, data)  
-                    if self.exist_extended_vram:
-                        self.cartridge.mapper.write(address, data)    
+                    # if self.exist_extended_vram:
+                    #     self.cartridge.mapper.write(address, data)    
 
             else:
                 if address < 0x0800:
@@ -211,18 +215,15 @@ class PPUBus(IBus):
                 elif address >= 0x0800:
                     address -= 0x0800
                     self.memory.write(address, data)
-                    if self.exist_extended_vram:
-                        self.cartridge.mapper.write(address, data)
+                    # if self.exist_extended_vram:
+                    #     self.cartridge.mapper.write(address, data)
             
                     
-
-        
         elif address < 0x4000:
             # palette
             address -= 0x3f00
             address %= 0x20
             self.palette_index_memory.write(address, data)
-            # LOGGER.warn(f"CPUBus: palette not implemented")
         else:
             raise InvalidAddress(f"Cannot access memory at {hex(address)}")
         
@@ -241,20 +242,11 @@ class PPUBus(IBus):
                 raise CartridgeNotFound("Cartridge not found")
             return self.cartridge.mapper.read(address)
         elif address < 0x3f00:
+            # vram  (name table)
+
             if address >= 0x3000:
                 # for mirror
                 address -= 0x1000
-
-            # # vram  (name table)
-            # if address < 0x2800:
-            #     # on vram
-            #     address -= 0x2000
-            #     return self.memory.read(address)
-            # elif address < 0x3000:
-            #     # on cartridge
-            #     return self.cartridge.mapper.read(address)
-
-            # return self.read_from_vram(address - 0x2000)
 
             address -= 0x2000
             if self.is_horizontal_mirror:
@@ -274,10 +266,9 @@ class PPUBus(IBus):
 
 
         elif address < 0x4000:
+            # palette
             address -= 0x3f00
             address %= 0x20
-            # palette
-            # LOGGER.warn(f"CPUBus: palette not implemented")
             return self.palette_index_memory.read(address)
 
         else:

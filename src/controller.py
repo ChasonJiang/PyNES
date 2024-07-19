@@ -20,13 +20,19 @@ class Controller:
             self.data &= ~button.value
 
     def write(self, data:bytes):
-        if data & 0x10:
+        if data & 0x01:
             self.is_strobed = True
-        else:
             self.offset = 0
+        else:
+
             self.is_strobed = False
 
     def read(self) -> bytes:
-        data = self.data & ControllerButton.A.value if self.is_strobed else self.data & (0x80 >> self.offset)
-        self.offset += 1
+        data=0
+        if self.is_strobed:
+            data = self.data & 0x01
+        else:
+            data = self.data & (0x80 >> self.offset)
+            self.offset += 1
+            self.offset %= 8
         return 1 if data else 0
