@@ -132,7 +132,7 @@ def test_all(breakpoint_addr=None):
     logger.setLevel(logging.NOTSET)
     breakpoint_addr = breakpoint_addr
 
-    c=Cartridge("roms/Super Mario Bros (E).nes")
+    c=Cartridge("roms/Super Mario Bros.nes")
     m=Machine(c)
     m.hook_enable(True)
     m.reset()
