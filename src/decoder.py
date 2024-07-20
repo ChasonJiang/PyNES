@@ -13,12 +13,12 @@ from .instruction import INSTRUCTION_TABLE, AddressingMethod, Instruction
 class Decoder:
     def __init__(self, cpu: ICPU):
         self.cpu = cpu
-        # self.ins = Instruction(0x00)
+        self.ins = Instruction(0x00)
 
     def decode(self, opcode:bytes):
-        ins:Instruction = Instruction(opcode)
-        # self.ins.reset()
-        # ins = self.ins
+        # ins:Instruction = Instruction(opcode)
+        self.ins.reset()
+        ins = self.ins
         ins.opcode = opcode
         instruction_info = INSTRUCTION_TABLE.get(opcode, None)
         if instruction_info is None:
@@ -30,17 +30,15 @@ class Decoder:
         ins.length = ins.instruction_info[2]
         ins.cycles = ins.instruction_info[3]
         
-        operand_len = ins.length - 1
-
-        if operand_len == 1:
-            ins.operand1 = self.cpu.bus.read_byte(self.cpu.regs.PC)
-            self.cpu.regs.PC += 1
-
-        elif operand_len == 2:
-            ins.operand1 = self.cpu.bus.read_byte(self.cpu.regs.PC)
-            self.cpu.regs.PC += 1
-            ins.operand2 = self.cpu.bus.read_byte(self.cpu.regs.PC)
-            self.cpu.regs.PC += 1
+        match ins.length - 1:
+            case 1:
+                ins.operand1 = self.cpu.bus.read_byte(self.cpu.regs.PC)
+                self.cpu.regs.PC += 1
+            case 2:
+                ins.operand1 = self.cpu.bus.read_byte(self.cpu.regs.PC)
+                self.cpu.regs.PC += 1
+                ins.operand2 = self.cpu.bus.read_byte(self.cpu.regs.PC)
+                self.cpu.regs.PC += 1
 
         ins.data, ins.addr = self.addressing(self.cpu, ins)
 

@@ -149,7 +149,7 @@ class CPU(ICPU):
         if self.hook_enabled:
             self._call_before_exec_hook()
             self._call_status_hook()
-        self.log()
+        # self.log()
         self.executor.execute(self.current_instruction)
 
         if self.hook_enabled:

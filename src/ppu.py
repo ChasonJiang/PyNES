@@ -103,7 +103,7 @@ class PPU(IPPU):
 
 
     def render(self):
-        self.current_frame = NPFrame()
+        # self.current_frame = NPFrame()
         self.render_background()
         self.render_sprite()
 

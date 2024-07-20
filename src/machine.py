@@ -110,7 +110,7 @@ class Machine:
         # Notify the PPU about the CPU's defer cycles
         self.cpu.register_hook(CPUHookType.AFTER_EXEC, lambda cpu: self.ppu.set_cpu_defer_cycles(cpu.defer_cycles))
 
-        self.window = pygame.display.set_mode((256, 240))
+        self.window = pygame.display.set_mode((256, 240),flags=pygame.RESIZABLE)
         pygame.display.set_caption("PyNES")
 
         def render_callback(npframe:NPFrame, window: pygame.Surface):
@@ -154,7 +154,7 @@ class Machine:
         self.ppu.clock()
 
     def run(self):
-        # pygame.init()
+        pygame.init()
         start_time = time.perf_counter_ns()
         cycle_time = round(1000_000_000/NTSC_CPU_CLOCK_FREQ if self.is_ntsc else 1000_000_000/PAL_CPU_CLOCK_FREQ)
         self.machine_status["is_running"] = True

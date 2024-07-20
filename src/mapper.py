@@ -52,7 +52,7 @@ class Mapper0(IMapper):
         if address < 0x2000:
             # CHR ROM
             self.chr_data[address] = data
-            LOGGER.warn(f"Mapper0: Attempt to write a byte {data:04X} to CHR ROM at {address:04X}")
+            # LOGGER.warn(f"Mapper0: Attempt to write a byte {data:04X} to CHR ROM at {address:04X}")
         elif address < 0x8000:
             # SRAM
             if self.ram is None:
@@ -61,6 +61,6 @@ class Mapper0(IMapper):
         elif address < 0x10000:
             # PRG ROM
             self.prg_data[(address & 0xbfff if self.is_mirrored else address) - 0x8000] = data
-            LOGGER.warn(f"Mapper0: Attempt to write a byte {data:04X} to PRG ROM at {address:04X}")
+            # LOGGER.warn(f"Mapper0: Attempt to write a byte {data:04X} to PRG ROM at {address:04X}")
         else:
             raise InvalidAddress(f"Cannot access memory at {hex(address)}")

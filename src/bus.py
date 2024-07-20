@@ -76,13 +76,13 @@ class CPUBus(IBus):
             elif address == 0x4016:
                 # joypad
                 if self.controllers == {}:
-                    LOGGER.warn(f"CPUBus: Controller not found")
+                    # LOGGER.warn(f"CPUBus: Controller not found")
                     return
                 for k, v in self.controllers.items():
                     v.write(data)
                 
-            else:
-                LOGGER.warn(f"CPUBus: IO registers not implemented")
+            # else:
+                # LOGGER.warn(f"CPUBus: IO registers not implemented")
         elif address < 0x6000:
             # TODO: Expansion ROM
             raise NotImplementedError("Expansion ROM not implemented")
@@ -119,18 +119,18 @@ class CPUBus(IBus):
                 return self.read_byte(address)
             elif address == 0x4016:
                 if self.controllers == {}:
-                    LOGGER.warn(f"CPUBus: Controller not found")
+                    # LOGGER.warn(f"CPUBus: Controller not found")
                     return 0x00
                 return self.controllers[1].read()
             elif address == 0x4017:
                 if self.controllers == {}:
-                    LOGGER.warn(f"CPUBus: Controller not found")
+                    # LOGGER.warn(f"CPUBus: Controller not found")
                     return 0x00
                 # return self.controllers[2].read()
                 return self.controllers[1].read()
             else:
                 # TODO: IO registers
-                LOGGER.warn(f"CPUBus: IO registers not implemented")
+                # LOGGER.warn(f"CPUBus: IO registers not implemented")
                 return 0x00
             
         elif address < 0x6000:
