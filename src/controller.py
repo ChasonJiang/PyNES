@@ -24,7 +24,6 @@ class Controller:
             self.is_strobed = True
             self.offset = 0
         else:
-
             self.is_strobed = False
 
     def read(self) -> bytes:
@@ -32,7 +31,7 @@ class Controller:
         if self.is_strobed:
             data = self.data & 0x01
         else:
-            data = self.data & (0x80 >> self.offset)
+            data = self.data & (1 << self.offset)
             self.offset += 1
             self.offset %= 8
         return 1 if data else 0

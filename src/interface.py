@@ -41,14 +41,23 @@ class ICatridge(ABC):
 
 
 class ControllerButton(Enum):
-    A:bytes = 0x80
-    B:bytes = 0x40
-    SELECT:bytes = 0x20
-    START:bytes = 0x10
-    UP:bytes = 0x08
-    DOWN:bytes = 0x04
-    LEFT:bytes = 0x02
-    RIGHT:bytes = 0x01
+    # A:bytes = 0x80
+    # B:bytes = 0x40
+    # SELECT:bytes = 0x20
+    # START:bytes = 0x10
+    # UP:bytes = 0x08
+    # DOWN:bytes = 0x04
+    # LEFT:bytes = 0x02
+    # RIGHT:bytes = 0x01
+
+    A:bytes = 0x01
+    B:bytes = 0x02
+    SELECT:bytes = 0x04
+    START:bytes = 0x08
+    UP:bytes = 0x10
+    DOWN:bytes = 0x20
+    LEFT:bytes = 0x40
+    RIGHT:bytes = 0x80
 
 class IController(ABC):
     data:bytes = 0x00

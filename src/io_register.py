@@ -51,15 +51,12 @@ class AddressRegister(IORegister):
         # self.w_latch = not self.w_latch
 
     def increment(self, inc:bytes):
-        lo = self.low + inc
         lo = self.low
         new_lo = (lo + inc)&0xff
         self.low = new_lo
         
         if lo > new_lo:
             self.hight = (self.hight + 1) & 0xff
-
-
 
         # mirror down addr above 0x3fff
         if self.read() > 0x3fff:
@@ -339,34 +336,21 @@ class PPURegisterManager:
                 
         elif address == 0x2001:
             # Mask Register
-            # TODO:check if mask register is implemented
-            # print("Warning: PPU Mask Register is not implemented")
             self.mask_reg.write(data)
         elif address == 0x2002:
             # Status Register
-            # TODO:check if status register is implemented
-            # print("Warning: PPU Status Register is not implemented")
-            # self.status_reg.write(data)
             LOGGER.warn(f"PPURegisterManager: Attempt to write to PPU Status Register at {address:04X}, it will be ignored")
         elif address == 0x2003:
             # OAM Address Register
-            # TODO: check if oam address register is implemented
-            # print("Warning: PPU OAM Address Register is not implemented")
             self.oam_addr_reg = data
         elif address == 0x2004:
             # OAM Data Register
-            # TODO: check if oam data register is implemented
-            # print("Warning: PPU OAM Data Register is not implemented")
-            # self.oam_data_reg = data
             self.oam_data[self.oam_addr_reg] = data
             self.oam_addr_reg += 1
             self.oam_addr_reg %= 256
         elif address == 0x2005:
             # Scroll Register
-            # TODO: check if scroll register is implemented
-            # print("Warning: PPU Scroll Register is not implemented")
             # share address register state
-            
             if self.internal_reg.w_latch:
                 self.scroll_reg[0] = data
             else:
@@ -378,7 +362,6 @@ class PPURegisterManager:
 
             self.addr_reg.update(data, self.internal_reg.w_latch)
             self.update_w_latch()
-            # self.addr_reg.increment(self.ctrl_reg.get_increment())
 
         elif address == 0x2007:
             # PPU Data Register
@@ -387,7 +370,6 @@ class PPURegisterManager:
             self.ppu_bus.write_byte(addr, data)
         elif address == 0x4014:
             # OAM DMA
-            # print("Warning: PPU OAM DMA is not implemented")
 
             for i in range(256):
                 addr = (self.oam_addr_reg + i)%256

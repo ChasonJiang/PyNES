@@ -66,7 +66,6 @@ class CPUBus(IBus):
 
             elif address == 0x4014:
                 # OAMDMA
-                # TODO: check this implementation
                 addr = data * 0x100
                 if addr > 0x07ff or addr < 0x0200:
                     # LOGGER.warn(f"CPUBus: OAMDMA address out of range: {hex(addr)}")
