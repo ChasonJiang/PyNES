@@ -203,6 +203,7 @@ class PPUBus(IBus):
                     # if self.exist_extended_vram:
                     #     self.cartridge.mapper.write(address, data)            
                 else:
+                    address -= 0x0800
                     address %= 0x0400
                     address += 0x0400
                     self.memory.write(address, data)  
@@ -212,7 +213,7 @@ class PPUBus(IBus):
             else:
                 if address < 0x0800:
                     self.memory.write(address, data)
-                elif address >= 0x0800:
+                else:
                     address -= 0x0800
                     self.memory.write(address, data)
                     # if self.exist_extended_vram:
@@ -254,6 +255,7 @@ class PPUBus(IBus):
                     address %= 0x0400
                     return self.memory.read(address)
                 else:
+                    address -= 0x0800
                     address %= 0x0400
                     address += 0x0400
                     return self.memory.read(address)

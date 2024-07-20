@@ -128,6 +128,66 @@ def sub_8bit(*nums:List[bytes])->Tuple[bytes, bool, bool, bool]:
     total &= 0xFF
     return total, is_negative, carry, overflow
 
+def bcd_to_decimal(bcd):
+    """Convert BCD (Binary Coded Decimal) to Decimal."""
+    decimal = 0
+    multiplier = 1
+    while bcd > 0:
+        decimal += (bcd & 0xF) * multiplier
+        multiplier *= 10
+        bcd >>= 4
+    return decimal
+
+def decimal_to_bcd(decimal):
+    """Convert Decimal to BCD (Binary Coded Decimal)."""
+    bcd = 0
+    shift = 0
+    while decimal > 0:
+        bcd |= (decimal % 10) << shift
+        decimal //= 10
+        shift += 4
+    return bcd
+
+def bcd_add(*nums:List[bytes]):
+    """Perform BCD addition and return the result, carry, overflow, and sign."""
+    result_dec = bcd_to_decimal(nums[0])
+    for num in nums[1:]:
+        result_dec += bcd_to_decimal(num)
+
+    # Check for carry and overflow
+    max_bcd = 0x99  # Maximum value for 4-digit BCD (99)
+    carry = 1 if result_dec > max_bcd else 0
+    overflow = 1 if result_dec > 99 else 0
+
+    # Convert result back to BCD
+    result_bcd = decimal_to_bcd(result_dec)
+
+    # Determine the sign (positive or negative)
+    is_negative = 0 if result_dec >= 0 else 1
+
+    return result_bcd & 0xFF, is_negative, carry, overflow
+
+def bcd_sub(*nums:List[bytes]):
+    """Perform BCD subtraction and return the result, carry, overflow, and sign."""
+    result_dec = bcd_to_decimal(nums[0])
+    for num in nums[1:]:
+        result_dec -= bcd_to_decimal(num)
+
+    # Check for carry and overflow
+    carry = 1 if result_dec < 0 else 0
+    overflow = 0  # No overflow in subtraction for BCD
+
+    # Convert result back to BCD
+    result_bcd = decimal_to_bcd(abs(result_dec))
+
+    # Determine the sign (positive or negative)
+    is_negative = 0 if result_dec >= 0 else 1
+
+    return result_bcd & 0xFF, is_negative, carry, overflow
+
+
+
+
 
 @method_register("ADC")
 def ADC(cpu: ICPU, ins: Instruction):
@@ -161,77 +221,6 @@ def ADC(cpu: ICPU, ins: Instruction):
     cpu.regs.A = result
     cpu.defer_cycles += ins.cycles[0]
 
-# @method_register("ADC")
-# def ADC(cpu: ICPU, ins: Instruction):
-#     # A,Z,C,N = A + M + C
-#     C = cpu.regs.P.C
-#     A = cpu.regs.A
-#     M = ins.data if ins.data is not None else cpu.bus.read_byte(ins.addr)
-    
-#     if cpu.regs.P.D:
-#         halfcarry = 0
-#         decimalcarry = 0
-#         adjust0 = 0
-#         adjust1 = 0
-#         nibble0 = (M & 0xf) + (A & 0xf) + C
-#         if nibble0 > 9:
-#             adjust0 = 6
-#             halfcarry = 1
-#         nibble1 = ((M >> 4) & 0xf) + ((A >> 4) & 0xf) + halfcarry
-#         if nibble1 > 9:
-#             adjust1 = 6
-#             decimalcarry = 1
-
-#         # the ALU outputs are not decimally adjusted
-#         nibble0 = nibble0 & 0xf
-#         nibble1 = nibble1 & 0xf
-#         aluresult = (nibble1 << 4) + nibble0
-
-#         # the final A contents will be decimally adjusted
-#         nibble0 = (nibble0 + adjust0) & 0xf
-#         nibble1 = (nibble1 + adjust1) & 0xf
-
-#         cpu.regs.P.C = 0
-#         cpu.regs.P.Z = 0
-#         cpu.regs.P.V = 0
-#         cpu.regs.P.N = 0
-
-#         if aluresult == 0:
-#             cpu.regs.P.Z = 1
-#         else:
-#             cpu.regs.P.write( cpu.regs.P.read() | (aluresult & Flags.N))
-
-#         if decimalcarry == 1:
-#             cpu.regs.P.C = 1
-
-#         if (~(A ^ M) & (A ^ aluresult)) & Flags.N:
-#             cpu.regs.P.V = 1
-
-#         cpu.regs.A = (nibble1 << 4) + nibble0
-#     else:
-
-#         result = M + A + cpu.regs.P.C
-
-#         cpu.regs.P.C = 0
-#         cpu.regs.P.Z = 0
-#         cpu.regs.P.V = 0
-#         cpu.regs.P.N = 0
-
-#         if (~(A ^ M) & (A ^ result)) & cpu.regs.P.N:
-#             cpu.regs.P.V = 1
-
-#         data = result
-#         if data > 0x80:
-#             cpu.regs.P.C = 1
-#             data &= 0x80
-
-#         if data == 0:
-#             cpu.regs.P.Z = 1
-#         else:
-#             cpu.regs.P.write(cpu.regs.P.read() | (data & Flags.N))
-#         cpu.regs.A = data
-
-#     cpu.defer_cycles += ins.cycles[0]
 
 @method_register("AND")
 def AND(cpu: ICPU, ins: Instruction):

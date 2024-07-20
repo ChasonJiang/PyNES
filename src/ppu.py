@@ -125,7 +125,7 @@ class PPU(IPPU):
 
             else:
                 tile_y = (tile_y + tile_offset_y - 29)
-                attr_idx = ((tile_y // 4)  * 8 + (tile_x // 4)) + 0x400
+                attr_idx = ((tile_y // 4)  * 8 + (tile_x // 4)) + 0x800
         attr = self.bus.read_byte(nametable_base_addr + 0x3C0 + attr_idx)
 
 
@@ -162,18 +162,18 @@ class PPU(IPPU):
         is_horizontal_mirror = self.bus.is_horizontal_mirror
         if not is_horizontal_mirror:
             if 31 - tile_offset_x >= tile_x:
-                tile_idx = tile_y * 32 + (tile_x + tile_offset_x)
+                tile_idx = tile_y * 32 + (tile_x + tile_offset_x) 
             else:
                 tile_idx = tile_y * 32 + (tile_x -(31 - tile_offset_x)) + 0x400
         else:
             if 29 - tile_offset_y >= tile_y:
-                tile_idx = (tile_y + tile_offset_y) * 32 + tile_x
+                tile_idx = (tile_y + tile_offset_y) * 32 + tile_x 
             else:
-                tile_idx = (tile_y + tile_offset_y - 29) * 32 + tile_x + 0x400
+                tile_idx = (tile_y + tile_offset_y - 29) * 32 + tile_x + 0x800
 
         return tile_idx
 
-    # @lru_cache(maxsize=960)
+    @lru_cache(maxsize=960)
     def tile_idx_to_tile_pos(self, tile_idx:int):
         tile_x = tile_idx % 32
         tile_y = tile_idx // 32
@@ -193,7 +193,6 @@ class PPU(IPPU):
             tile_idx = self.tile_pos_to_tile_idx(tile_x, tile_y, view_port_offset_x, view_port_offset_y)
             tile_addr = nametable_base_addr + tile_idx
             pattern_idx = self.bus.read_byte(tile_addr)
-
             # Get Tile Data from Pattern Table
             tile = [self.bus.read_byte(pattern_base_addr + (pattern_idx * 16 + f)) for f in range(16)]
 
@@ -247,19 +246,15 @@ class PPU(IPPU):
     
                     match (flip_h, flip_v):
                         case (False, False):
-                           
                            pos_x = tile_x + x
                            pos_y = tile_y + y
                         case (True, False):
-                            # self.current_frame.set_pixel(tile_x+7-x, tile_y+y, color)
                             pos_x = tile_x + 7 - x
                             pos_y = tile_y + y
                         case (False, True):
-                            # self.current_frame.set_pixel(tile_x+x, tile_y+7-y, color)
                             pos_x = tile_x + x
                             pos_y = tile_y + 7 - y
                         case (True, True):
-                            # self.current_frame.set_pixel(tile_x+7-x, tile_y+7-y, color)
                             pos_x = tile_x + 7 - x
                             pos_y = tile_y + 7 - y
 

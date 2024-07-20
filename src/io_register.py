@@ -51,21 +51,21 @@ class AddressRegister(IORegister):
         # self.w_latch = not self.w_latch
 
     def increment(self, inc:bytes):
-        # lo = self.low + inc
-        # lo = self.low
-        # new_lo = (lo + inc)&0xff
-        # self.low = new_lo
+        lo = self.low + inc
+        lo = self.low
+        new_lo = (lo + inc)&0xff
+        self.low = new_lo
         
-        # if lo > new_lo:
-        #     self.hight = (self.hight + 1) & 0xff
+        if lo > new_lo:
+            self.hight = (self.hight + 1) & 0xff
 
 
 
-        # # mirror down addr above 0x3fff
-        # if self.read() > 0x3fff:
-        #     self.write(self.read() & 0x3fff)
+        # mirror down addr above 0x3fff
+        if self.read() > 0x3fff:
+            self.write(self.read() & 0x3fff)
 
-        self.write(0x2000 + (self.read() + inc) % 0x2000)
+        # self.write(0x2000 + (self.read() + inc) % 0x2000)
 
 
 #    // 7  bit  0
